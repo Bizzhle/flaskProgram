@@ -11,6 +11,7 @@ bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 def login_required(view):
+    """View decorator that redirects anonymous users to the login page."""
     @functools.wraps(view)
     def wrapped_view(**Kwargs):
         if g.user is None:
@@ -36,9 +37,11 @@ def register():
         elif db.execute(
             'SELECT id FROM user WHERE username = ?', (username,)
         ).fetchone() is not None:
-            error = 'User {} is already registered.'.format(username)
+            error = 'User {0} is already registered.'.format(username)
 
         if error is None:
+            # the name is available, store it in the database and go to
+            # the login page
             db.execute(
                 'INSERT INTO user (username, password) VALUES (?, ?)',
                 (username, generate_password_hash(password))
@@ -53,13 +56,14 @@ def register():
 
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
+    """Log in a registered user by adding the user id to the session."""
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         db = get_db()
         error = None
         user = db.execute(
-            'SELECT id FROM user WHERE username = ?', (username,)
+            'SELECT * FROM user WHERE username = ?', (username,)
         ).fetchone()
 
         if user is None:
@@ -68,6 +72,7 @@ def login():
             error = 'Incorrect password.'
 
         if error is None:
+            # store the user id in a new session and return to the index
             session.clear()
             session['user_id'] = user['id']
             return redirect(url_for('index'))
@@ -79,6 +84,8 @@ def login():
 
 @bp.before_app_request
 def load_logged_in_user():
+    """If a user id is stored in the session, load the user object from
+    the database into ``g.user``."""
     user_id = session.get('user_id')
 
     if user_id is None:
