@@ -1,12 +1,23 @@
+import os
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for
+    Blueprint, flash, g, redirect, render_template, request, url_for,
 )
 from werkzeug.exceptions import abort
+from werkzeug.utils import secure_filename
 
 from flaskr.auth import login_required
 from flaskr.db import get_db
 
+
 bp = Blueprint('blog', __name__)
+
+ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
+
+
+def allowed_file(filename):
+
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 
 @bp.route('/')
@@ -100,6 +111,18 @@ def update(id):
             return redirect(url_for('blog.index'))
 
     return render_template('blog/update.html', post=post)
+
+
+@bp.route('/upload', methods=('GET', 'POST'))
+@login_required
+def upload():
+    """Upload videos and pictures if the current user is autho."""
+    if request.method == 'POST':
+        Description = request.form['title']
+        f = request.files['file']
+        f.save(secure_filename(f.filename))
+        return redirect(url_for('blog.index'))
+    return render_template('blog/upload.html')
 
 
 @bp.route('/<int:id>/delete', methods=('POST',))
